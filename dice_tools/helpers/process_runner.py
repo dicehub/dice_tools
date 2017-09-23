@@ -13,11 +13,11 @@ import codecs
 
 # DICE modules
 # =======================
-from dice_tools import switch
+from dice_tools import process_messages
 
 def run_process(*args, command=None, stop=None, stdout=None,
         stderr=None, cwd=None, format_kwargs=None,
-        yield_func=switch, **kwargs):
+        yield_func=process_messages, **kwargs):
     
     if isinstance(command, dict):
         if 'cwd' in command:

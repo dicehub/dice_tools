@@ -25,7 +25,8 @@ __all__ = [
     'Application',
     'ApplicationMeta',
     'diceTask',
-    'diceSync'
+    'diceSync',
+    'diceCall'
 ]
 
 class diceSlot:
@@ -147,8 +148,6 @@ class diceProperty(property):
     def __set__(self, obj, value):
         if self.__fset is None:
             raise AttributeError("can't set attribute")
-        if not obj.__dice_initialized__:
-            self.__fset(obj, value)
         else:
             old_value = self.__fget(obj)
             self.__fset(obj, value)
@@ -157,13 +156,22 @@ class diceProperty(property):
                 call(obj, '__dice_set_property__', self.__attr_name, new_value)
 
     def _send(self, obj):
-        call(obj, '__dice_set_property__', self.__attr_name, self.__fget(obj))
+        call(obj,
+            '__dice_set_property__',
+            self.__attr_name, self.__fget(obj),
+            mode=1)
 
     def _sync(self, obj, value):
         if value:
             value = value[0]
+            old_value = self.__fget(obj)
             self.__fset(obj, value)
             current = self.__fget(obj)
+            if old_value != current:
+                call(obj,
+                    '__dice_set_property__',
+                    self.__attr_name, current,
+                    mode=2)
             if value != current:
                 return (current,)
         else:
@@ -193,6 +201,20 @@ class CallProxy:
             return call_ex(self.object, self.real, *args)
         call(self.object, self.real, *args, **kwargs)
 
+def diceCall(func = None, name=None, block=False):
+    if func:
+        if not name:
+            name = func.__name__
+        if block:
+            def f(obj, *args, **kwargs):
+                return call_ex(obj, name, *args)
+        else:
+            def f(obj, *args, **kwargs):
+                call(obj, name, *args, **kwargs)
+    else:
+        def f(func, name = name, block=block):
+            return diceCall(func, name)
+    return f
 
 class diceSync:
 
@@ -248,36 +270,17 @@ class DICEObjectMeta(ABCMeta):
         cls.__dice_synchronizers__ = sorted(synchronizers, key=lambda x: len(x[0]))
         return cls
 
-    def __call__(self, *args, **kwargs):
-        obj = super().__call__(*args, **kwargs)
-        obj.__dice_post_init__()
-        return obj
-
 class DICEObject(object, metaclass = DICEObjectMeta):
 
     __dice_initialized__ = False
 
     def __init__(self, base_type, **kwargs):
-        methods, params = instantiate(self, base_type)
-        for info in methods:
-            if info.get('callback'):
-                if not hasattr(self, info['name']):
-                    setattr(self, info['name'], lambda *x: None)
-            else:
-                setattr(self, info['name'],
-                    CallProxy(self, info['real']))
-
-        self.__dice_pre_init__(**params)
-
+        instantiate(self, base_type)
         super().__init__(**kwargs)
 
-    def __dice_pre_init__(self, **kwargs):
-        pass
-
-    def __dice_post_init__(self):
+    def connect(self):
         for info in self.__dice_properties__:
             getattr(self.__class__, info['attr_name'])._send(self)
-        self.__dice_initialized__ = True
 
     def __dice_sync_props__(self, props):
         result = {}
@@ -360,32 +363,32 @@ class Application(DICEObject, metaclass=ApplicationMeta):
             (i.e. temporary)
     ''' 
 
-    workflow_dir = None
 
-    def __init__(self, **kwargs):
-        super().__init__(base_type = 'BasicApp', **kwargs)
-
-    def __dice_pre_init__(self, root_dir, instance_id,
-            progress, **kwargs):
-        self.__running = False
-        self.__root_dir = root_dir
+    def __init__(self, instance_id, workflow_dir, progress, **kwargs):
         self.__instance_id = instance_id
         self.__progress = progress
-        self.__console_locals = dict(app=self)
-        self.set_tasks([m.__dicetask__['name'] for m in self.__dice_tasks__])
-        super().__dice_pre_init__(**kwargs)
+        self.__workflow_dir = workflow_dir
+        self.__running = False
+        self.__stopped = False
+        self.__console_locals = {}
+        super().__init__(base_type = 'BasicApp', **kwargs)
 
-    def __dice_post_init__(self):
-        super().__dice_post_init__()
-        call(None, 'ready', self)
+
+    def connect(self):
+        super().connect()
+        self.set_tasks(
+            [m.__dicetask__['name'] for m in self.__dice_tasks__],
+            mode=1)
+        self.set_running(self.running, mode=1)
+        call(None, 'ready', self, mode=1)
+        
+    @property
+    def workflow_dir(self):
+        return self.__workflow_dir
 
     @property
     def running(self):
         return self.__running
-
-    @property
-    def root_dir(self):
-        return self.__root_dir
 
     @property
     def instance_id(self):
@@ -398,12 +401,15 @@ class Application(DICEObject, metaclass=ApplicationMeta):
     def progress_changed(self, progress):
         self.__progress = progress
 
-    def set_output(self, type_name, value = None):
-        '''
-        '''
-
     def stop(self):
-        self.__running = False
+        self.__stopped = True
+
+    def stopped(self):
+        return self.__stopped
+
+    def __set_runnning(self, running):
+        self.__running = running
+        self.set_running(running)
 
     def run(self, start, count):
         """
@@ -413,40 +419,133 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         :return bool: True on successful calculations.
         """
 
-        wizard.w_idle()
-
-        start = max(start, 0)
-        tasks_count = len(self.__dice_tasks__)
-        if tasks_count == 0:
-            return False
-        if count:
-            end = min(start + count, tasks_count)
-        else:
-            end = tasks_count 
-        self.__running = True
-        for idx in range(start, end):
-            self.set_progress(idx)
-            meth = self.__dice_tasks__[idx]
-            if not self.running:
+        self.__set_runnning(True)
+        try:
+            wizard.w_idle()
+            start = max(start, 0)
+            tasks_count = len(self.__dice_tasks__)
+            if tasks_count == 0:
                 return False
-            enabled = meth.__dicetask__['enabled']
-            if enabled is not None and not enabled(self):
-                continue
-            with app_log(meth.__dicetask__['name']):
-                if meth.__dicetask__['desc']:
-                    self.log(meth.__dicetask__['desc'])
-                try:
-                    res = meth(self)
-                    if not res:
-                        return False
-                except:
-                    self.log(traceback.format_exc())
-                    raise
-        if end == tasks_count:
-            self.set_progress(-1)
-        else:
-            self.set_progress(end)
-        return True
+            if count:
+                end = min(start + count, tasks_count)
+            else:
+                end = tasks_count 
+            self.__stopped = False
+            for idx in range(start, end):
+                self.set_progress(idx)
+                meth = self.__dice_tasks__[idx]
+                if not self.running:
+                    return False
+                enabled = meth.__dicetask__['enabled']
+                if enabled is not None and not enabled(self):
+                    continue
+                with app_log(meth.__dicetask__['name']):
+                    if meth.__dicetask__['desc']:
+                        self.log(meth.__dicetask__['desc'])
+                    try:
+                        res = meth(self)
+                        if not res:
+                            return False
+                    except:
+                        self.log(traceback.format_exc())
+                        raise
+            if end == tasks_count:
+                self.set_progress(-1)
+            else:
+                self.set_progress(end)
+            return True
+        finally:
+            self.__set_runnning(False)
+
+    def on_input(self, input_data):
+        pass
+
+    def on_internal_input(self, input_data):
+        pass
+
+    @diceCall
+    def alert(self):
+        pass
+
+    @diceCall
+    def debug(self):
+        pass
+
+    @diceCall
+    def log(self):
+        pass
+
+    @diceCall
+    def set_tasks(self, tasks):
+        pass
+
+    @diceCall
+    def set_running(self, running):
+        pass
+
+    @diceCall(block=True)
+    def run_internal(self):
+        pass
+
+    @diceCall(block=True)
+    def get_input(self):
+        pass
+
+    @diceCall(block=True)
+    def get_internal_input(self):
+        pass
+
+    @diceCall(block=True)
+    def set_behaviour(self, behaviour):
+        pass
+
+    @diceCall(block=True)
+    def get_behaviour(self):
+        return self.controller.behaviour
+
+    @diceCall(block=True)
+    def set_input_types(self, inputs):
+        pass
+
+    @diceCall(block=True)
+    def get_input_types(self):
+        pass
+
+    @diceCall(block=True)
+    def set_output_types(self, outputs):
+        pass
+
+    @diceCall(block=True)
+    def get_output_types(self):
+        pass
+
+    @diceCall(block=True)
+    def set_internal_input_types(self, inputs):
+        pass
+
+    @diceCall(block=True)
+    def get_internal_input_types(self):
+        pass
+
+    @diceCall(block=True)
+    def set_internal_output_types(self, outputs):
+        pass
+
+    @diceCall(block=True)
+    def get_internal_output_types(self):
+        pass
+
+    @diceCall(block=True)
+    def set_progress(self, progress):
+        pass
+
+    @diceCall(block=True)
+    def set_output(self, type_name, value):
+        pass
+
+    @diceCall(block=True)
+    def set_internal_output(self, type_name, value):
+        pass
 
     def config_path(self, *args, relative=False):
         """
