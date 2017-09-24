@@ -7,7 +7,7 @@ with open('README.md') as f:
 
 setup(
     name='dice_tools',
-    version='.'.join((str(v) for v in __VERSION__)),
+    version=__VERSION__,
     author='DICEhub',
     author_email='info@dicehub.com',
     description='DICE application tools',
