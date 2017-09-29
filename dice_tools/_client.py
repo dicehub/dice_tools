@@ -105,6 +105,12 @@ def call_ex(obj, name, *args):
 def instantiate(obj, type_name):
     object_id = id(obj)
     objects[object_id] = (obj, type_name)
+    if socks:
+        register_type(obj)
+        create_object(obj, type_name)
+        obj.connect()
+        obj.connected()
+
 
 def register_type(obj):
     cls = type(obj)
@@ -237,16 +243,19 @@ def connect(addr, port):
     socks.append(sock)
     packs[sock] = msgpack.Unpacker(object_hook = load_hook, encoding='utf-8')
     types[sock] = set()
-    current_socket = sock
-    if master_sock is None:
-        master_sock = sock
-    for (obj, type_name) in objects.values():
-        register_type(obj)
-    for (obj, type_name) in objects.values():
-        create_object(obj, type_name, mode=1)
-    for (obj, type_name) in objects.values():
-        obj.connect()
-    current_socket = None
+
+    with set_socket(sock):
+        if master_sock is None:
+            master_sock = sock
+        for (obj, type_name) in objects.values():
+            register_type(obj)
+        for (obj, type_name) in objects.values():
+            create_object(obj, type_name, mode=1)
+        for (obj, type_name) in objects.values():
+            obj.connect()
+        for (obj, type_name) in objects.values():
+            obj.connected()
+        call(None, 'ready', app, mode=1)
 
 def disconnect(s):
     socks.remove(s)
@@ -256,6 +265,17 @@ def disconnect(s):
 def wait(stop):
     while not stop():
         process_messages()
+
+@contextmanager
+def set_socket(sock):
+    global current_socket
+    old_sock = current_socket
+    current_socket = sock
+    try:
+        yield
+    finally:
+        current_socket = old_sock
+
 
 def process_messages():
     global reader
@@ -299,34 +319,32 @@ def process_messages():
             current.append((s, p))
 
     for s, p in current:
-        current_socket = s
-        for data in p:
-            obj_id, method_name, call_id, *method_args = data
+        with set_socket(s):
+            for data in p:
+                obj_id, method_name, call_id, *method_args = data
 
-            if obj_id is None:
-                method = globals()['handle_' + data[1]]
-            else:
-                if obj_id not in objects:
-                    #send error
-                    pass
+                if obj_id is None:
+                    method = globals()['handle_' + data[1]]
+                else:
+                    if obj_id not in objects:
+                        #send error
+                        pass
+                    try:
+                        method = getattr(objects[obj_id][0], method_name)
+                    except:
+                        traceback.print_exc()
+                        err = traceback.format_exc()
+                        call(None, 'error', call_id, err)
+                        continue
+
                 try:
-                    method = getattr(objects[obj_id][0], method_name)
+                    result = method(*method_args)
+                    if call_id is not None:
+                        call(None, 'result', call_id, result)
                 except:
                     traceback.print_exc()
                     err = traceback.format_exc()
                     call(None, 'error', call_id, err)
-                    continue
-
-            try:
-                result = method(*method_args)
-                if call_id is not None:
-                    call(None, 'result', call_id, result)
-            except:
-                traceback.print_exc()
-                err = traceback.format_exc()
-                call(None, 'error', call_id, err)
-
-    current_socket = None
 
     if current and master_sock not in socks:
         raise ConnectionLost()

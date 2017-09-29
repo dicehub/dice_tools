@@ -213,7 +213,7 @@ def diceCall(func = None, name=None, block=False):
                 call(obj, name, *args, **kwargs)
     else:
         def f(func, name = name, block=block):
-            return diceCall(func, name)
+            return diceCall(func, name, block)
     return f
 
 class diceSync:
@@ -278,9 +278,14 @@ class DICEObject(object, metaclass = DICEObjectMeta):
         instantiate(self, base_type)
         super().__init__(**kwargs)
 
+    @diceCall(block=True)
     def connect(self):
+        pass
+
+    def connected(self):
         for info in self.__dice_properties__:
             getattr(self.__class__, info['attr_name'])._send(self)
+        print('props send')
 
     def __dice_sync_props__(self, props):
         result = {}
@@ -374,14 +379,13 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         super().__init__(base_type = 'BasicApp', **kwargs)
 
 
-    def connect(self):
-        super().connect()
+    def connected(self):
+        super().connected()
         self.set_tasks(
             [m.__dicetask__['name'] for m in self.__dice_tasks__],
             mode=1)
         self.set_running(self.running, mode=1)
-        call(None, 'ready', self, mode=1)
-        
+
     @property
     def workflow_dir(self):
         return self.__workflow_dir
@@ -457,11 +461,28 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         finally:
             self.__set_runnning(False)
 
-    def on_input(self, input_data):
+    def input_changed(self, input_data):
+        print('zzzzzzzzz')
         pass
 
-    def on_internal_input(self, input_data):
+    def internal_input_changed(self, input_data):
         pass
+
+    def behaviour_changed(self, behaviour):
+        pass
+
+    def input_types_changed(self, input_types):
+        pass
+
+    def internal_input_types_changed(self, input_types):
+        pass
+
+    def output_types_changed(self, output_types):
+        pass
+
+    def internal_output_types_changed(self, output_types):
+        pass
+
 
     @diceCall
     def alert(self):
@@ -488,27 +509,11 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         pass
 
     @diceCall(block=True)
-    def get_input(self):
-        pass
-
-    @diceCall(block=True)
-    def get_internal_input(self):
-        pass
-
-    @diceCall(block=True)
     def set_behaviour(self, behaviour):
         pass
 
     @diceCall(block=True)
-    def get_behaviour(self):
-        return self.controller.behaviour
-
-    @diceCall(block=True)
     def set_input_types(self, inputs):
-        pass
-
-    @diceCall(block=True)
-    def get_input_types(self):
         pass
 
     @diceCall(block=True)
@@ -516,23 +521,11 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         pass
 
     @diceCall(block=True)
-    def get_output_types(self):
-        pass
-
-    @diceCall(block=True)
     def set_internal_input_types(self, inputs):
         pass
 
     @diceCall(block=True)
-    def get_internal_input_types(self):
-        pass
-
-    @diceCall(block=True)
     def set_internal_output_types(self, outputs):
-        pass
-
-    @diceCall(block=True)
-    def get_internal_output_types(self):
         pass
 
     @diceCall(block=True)

@@ -29,8 +29,8 @@ class Model(DICEObject):
         self.__data = None
         self.setup(model_data)
 
-    def connect(self):
-        super().connect()
+    def connected(self):
+        super().connected()
         root_item_id = id(self.__data.root_item)
         roles = self.__data.model_roles
         methods = self.__data.model_methods

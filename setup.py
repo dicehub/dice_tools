@@ -16,6 +16,5 @@ setup(
     packages = find_packages(),
     install_requires=[
         'PyYAML',
-        'greenlet',
         'msgpack-python'],
 )
