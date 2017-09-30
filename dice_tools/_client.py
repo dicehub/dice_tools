@@ -109,8 +109,6 @@ def instantiate(obj, type_name):
         register_type(obj)
         create_object(obj, type_name)
         obj.connect()
-        obj.connected()
-
 
 def register_type(obj):
     cls = type(obj)
@@ -253,8 +251,6 @@ def connect(addr, port):
             create_object(obj, type_name, mode=1)
         for (obj, type_name) in objects.values():
             obj.connect()
-        for (obj, type_name) in objects.values():
-            obj.connected()
         call(None, 'ready', app, mode=1)
 
 def disconnect(s):

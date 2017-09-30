@@ -462,7 +462,6 @@ class Application(DICEObject, metaclass=ApplicationMeta):
             self.__set_runnning(False)
 
     def input_changed(self, input_data):
-        print('zzzzzzzzz')
         pass
 
     def internal_input_changed(self, input_data):
