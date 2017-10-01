@@ -1,19 +1,22 @@
 
-from dice_tools import DICEObject, diceCall
+from dice_tools import DICEObject, diceCall, wizard
 import lz4framed
 import math
 from time import perf_counter
 
 import concurrent.futures
+import cv2
+import numpy as np
+from PIL import Image
+import io
+import threading
+from queue import Queue
 
-WORKERS = 4
+def worker(view, sx, sy, flip, data, index):
+    data = lz4framed.compress(data, level=0)
+    wizard.w_send_frame(view, sx, sy, flip, [data], index)
 
-_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS)
-
-def chunks(data):
-    n = math.ceil(len(data) / WORKERS)
-    for i in range(0, len(data), n):
-        yield data[i:i + n]
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
 __ALL__ = ['View']
 
@@ -21,23 +24,24 @@ class View(DICEObject):
 
     def __init__(self, **kwargs):
         super().__init__(base_type='ExposedView', **kwargs)
+        wizard.subscribe(self.w_send_frame, view=self)
+        self.__frame_counter = 0
+        self.__send_counter = 0
+
+    def w_send_frame(self, view, sx, sy, flip, data, frame_index):
+        if self.__send_counter < frame_index:
+            self.__send_counter = frame_index
+            self._update(sx, sy, data, flip, 'lz4')
+        else:
+            print('frame skipped')
 
     @diceCall
     def _update(self, sx, sy, flip, data):
         pass
 
     def update(self, sx, sy, flip, data):
-        start = perf_counter()
-        gg = list(chunks(data))
-        # print('zz11', perf_counter()-start, len(gg))
-        futures = [
-            _executor.submit(lz4framed.compress, v, level=2)
-            for v in gg]
-        # print('zz', perf_counter()-start)
-        data = [v.result() for v in futures]
-        # data = [lz4framed.compress(data, level=lz4framed.LZ4F_COMPRESSION_MIN)]
-        self._update(sx, sy, data, flip, 'lz4')
-        print(perf_counter()-start)
+        self.__frame_counter += 1
+        executor.submit(worker, self, sx, sy, flip, data, self.__frame_counter)
 
     def size_changed(self, size_x, size_y):
         """
