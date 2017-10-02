@@ -5,9 +5,6 @@ import math
 from time import perf_counter
 
 import concurrent.futures
-import cv2
-import numpy as np
-from PIL import Image
 import io
 import threading
 from queue import Queue
