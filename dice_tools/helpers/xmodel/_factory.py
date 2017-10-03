@@ -9,7 +9,8 @@ from ._data import StandardModelData
 from ._model import Model
 
 __all__ = [
-    'ModelElements'
+    'standard_model',
+    'list_of_dicts_model'
     ]
 
 

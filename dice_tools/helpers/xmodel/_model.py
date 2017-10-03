@@ -1,4 +1,4 @@
-from dice_tools import wizard, DICEObject
+from dice_tools import wizard, DICEObject, diceCall
 from ._selection import ModelSelection
 import weakref
 
@@ -28,6 +28,19 @@ class Model(DICEObject):
         super().__init__(base_type = 'BaseModel', **kwargs)
         self.__data = None
         self.setup(model_data)
+
+    def connected(self):
+        super().connected()
+        root_item_id = id(self.__data.root_item)
+        roles = self.__data.model_roles
+        methods = self.__data.model_methods
+        self.x_model_reset(root_item_id, roles, methods, mode=1)
+        def fill(item):
+            if item in self.__fetched:
+                self.__model_insert_children(item, mode=1)
+                for v in self.__data.elements(item):
+                    fill(v)
+        fill(self.__data.root_item)
 
     def setup(self, model_data):
         """Resets the model and initializes it to use model data passed in arguments.
@@ -197,7 +210,7 @@ class Model(DICEObject):
             self.x_model_move_items(id(source), source_row, count,
                                     id(dest), dest_row, callback=None)
 
-    def __model_insert_children(self, item, row=0, count=None):
+    def __model_insert_children(self, item, row=0, count=None, mode=0):
         # do not send data if item is not expanded and has no children in DICE
         if item in self.__fetched:
             children = self.__data.elements(item)
@@ -232,7 +245,7 @@ class Model(DICEObject):
                 data.append(params)
 
             # send data about new items
-            self.x_model_insert_items(id(item), data, callback=None)
+            self.x_model_insert_items(id(item), data, mode=mode)
 
     def __model_remove_children(self, item, row=0, count=None):
         # send data only if items exists in DICE (item's parent expanded)
@@ -240,26 +253,26 @@ class Model(DICEObject):
             children = self.__data.elements(item)
             count = count if count != None else len(children) - row
             if count > 0:
-                self.x_model_remove_items(id(item), row, count, callback=None)
+                self.x_model_remove_items(id(item), row, count)
 
     def __model_update_item(self, item, row=None, count=1):
         item_id = id(item)
         # update only if item exists in DICE (item's parent expanded)
         if item_id in self.__items:
-            self.x_model_update_item(item_id, self.__data.roles(item), callback=None)
+            self.x_model_update_item(item_id, self.__data.roles(item))
 
     def __model_select_item(self, item):
         item_id = id(item)
         # select only if item exists in DICE (item's parent expanded)
         if item_id in self.__items:
-            self.x_model_select([item_id], True, False, callback=None)
+            self.x_model_select([item_id], True, False)
         wizard.w_model_selection_changed(self, [item], [])
 
     def __model_deselect_item(self, item):
         item_id = id(item)
         # select only if item exists in DICE (item's parent expanded)
         if item_id in self.__items:
-            self.x_model_select([item_id], False, False, callback=None)
+            self.x_model_select([item_id], False, False)
         wizard.w_model_selection_changed(self, [], [item])
 
     # notifications
@@ -385,3 +398,31 @@ class Model(DICEObject):
         dest = self.__items.get(dest_id)
         if source and dest:
             self.__data.move(source, source_row, count, dest, dest_row)
+
+    @diceCall
+    def x_model_reset(self):
+        pass
+
+    @diceCall
+    def x_set_current(self):
+        pass
+
+    @diceCall
+    def x_model_move_items(self):
+        pass
+
+    @diceCall
+    def x_model_insert_items(self):
+        pass
+
+    @diceCall
+    def x_model_remove_items(self):
+        pass
+
+    @diceCall
+    def x_model_update_item(self):
+        pass
+
+    @diceCall
+    def x_model_select(self):
+        pass

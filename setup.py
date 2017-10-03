@@ -16,6 +16,6 @@ setup(
     packages = find_packages(),
     install_requires=[
         'PyYAML',
-        'greenlet',
+        'py-lz4framed',
         'msgpack-python'],
 )
