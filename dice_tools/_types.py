@@ -13,7 +13,7 @@ import pprint
 
 # DICE modules
 # ============
-from ._client import call, call_ex, instantiate, delete, app_log
+from ._client import call, call_ex, instantiate, delete, app_log, socks
 from ._wizard import wizard
 
 __all__ = [
@@ -270,6 +270,12 @@ class DICEObjectMeta(ABCMeta):
         cls.__dice_synchronizers__ = sorted(synchronizers, key=lambda x: len(x[0]))
         return cls
 
+    def __call__(self, *args, **kwargs):
+        obj = super().__call__(*args, **kwargs)
+        if socks:
+            obj.connect()
+        return obj
+
 class DICEObject(object, metaclass = DICEObjectMeta):
 
     __dice_initialized__ = False
@@ -285,7 +291,6 @@ class DICEObject(object, metaclass = DICEObjectMeta):
     def connected(self):
         for info in self.__dice_properties__:
             getattr(self.__class__, info['attr_name'])._send(self)
-        print('props send')
 
     def __dice_sync_props__(self, props):
         result = {}

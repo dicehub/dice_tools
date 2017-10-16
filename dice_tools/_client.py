@@ -25,7 +25,8 @@ __all__ = [
     'app',
     'call',
     'call_ex',
-    'connect'
+    'connect',
+    'socks'
     ]
 
 app = None
@@ -96,7 +97,7 @@ def call_ex(obj, name, *args):
         nonlocal result
         finished = True
         result = x
-    call(obj, name, *args, callback=callback, flags=3)
+    call(obj, name, *args, callback=callback, mode=3)
     wait(lambda: finished)
     if isinstance(result, Exception):
         raise result
@@ -108,7 +109,6 @@ def instantiate(obj, type_name):
     if socks:
         register_type(obj)
         create_object(obj, type_name)
-        obj.connect()
 
 def register_type(obj):
     cls = type(obj)
@@ -158,14 +158,14 @@ def w_stderr_write(data):
         else:
             stderr_data += data[0]
 
-def send(message, flags=0):
+def send(message, mode=0):
 
     ss = {s: 0 for s in socks
 
-        if ((flags == 1 and s == current_socket)
-            or (flags == 2 and s != current_socket)
-            or (flags == 3 and s == master_sock)
-            or not flags)
+        if ((mode == 1 and s == current_socket)
+            or (mode == 2 and s != current_socket)
+            or (mode == 3 and s == master_sock)
+            or not mode)
     }
 
     while ss:
