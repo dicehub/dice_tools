@@ -260,7 +260,7 @@ def disconnect(s):
 
 def wait(stop):
     while not stop():
-        process_messages()
+        process_messages(None)
 
 @contextmanager
 def set_socket(sock):
@@ -273,14 +273,21 @@ def set_socket(sock):
         current_socket = old_sock
 
 
-def process_messages():
+def process_messages(timeout=0):
     global reader
     global idle
 
     for f in wizard.get_timeouts():
         f()
 
-    rdfs, _, _ = select([reader] + socks, [], [], wizard.get_delta())
+    if timeout is None:
+        timeout = wizard.get_delta()
+    else:
+        delta = wizard.get_delta()
+        if delta is not None:
+            timeout = min(timeout, delta)
+
+    rdfs, _, _ = select([reader] + socks, [], [], timeout)
 
     if rdfs:
         idle = 0
@@ -390,7 +397,7 @@ def run():
 
     try:
         while True:
-            process_messages()
+            process_messages(None)
     except ConnectionLost:
         pass
     finally:
