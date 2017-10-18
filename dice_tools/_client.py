@@ -291,7 +291,7 @@ def process_messages(timeout=0):
 
     if rdfs:
         idle = 0
-    elif rdfs is 0:
+    elif idle is 0:
         idle = 1
 
     current = []
