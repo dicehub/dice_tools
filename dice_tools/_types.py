@@ -380,7 +380,7 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         self.__workflow_dir = workflow_dir
         self.__running = False
         self.__stopped = False
-        self.__console_locals = {}
+        self.__console_locals = dict(app=self)
         super().__init__(base_type = 'BasicApp', **kwargs)
 
 
