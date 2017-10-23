@@ -1,3 +1,5 @@
+import _thread
+
 from types import MethodType, FunctionType
 from inspect import signature
 from weakref import ref, WeakKeyDictionary, WeakSet, WeakMethod
@@ -5,9 +7,10 @@ from heapq import heappush, heappop
 from time import time
 from collections import Counter
 from queue import Queue, Empty
-import _thread
+
 
 __all__ = ['wizard']
+
 
 class _Wizard:
     
@@ -301,5 +304,6 @@ class _Wizard:
             for s in subs:
                 info.setdefault(s, set()).add(v)
         return {k: list(v) for k, v in info.items()}
+
 
 wizard = _Wizard()

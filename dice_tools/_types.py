@@ -29,6 +29,7 @@ __all__ = [
     'diceCall'
 ]
 
+
 class diceSlot:
 
     def __init__(self, *args, method=None, name=None, doc=None):
@@ -62,6 +63,7 @@ class diceSlot:
                 'method_name': attr_name
                 })
         return result
+
 
 class diceSignal:
     """
@@ -104,6 +106,7 @@ class diceSignal:
             'name': self.__name,
             'arguments': self.__arguments
         }
+
 
 class diceProperty(property):
     """
@@ -188,6 +191,7 @@ class diceProperty(property):
             'notify': self.__notify and self.__notify.name
         }
 
+
 class CallProxy:
 
     __slots__ = 'object', 'real'
@@ -200,6 +204,7 @@ class CallProxy:
         if 'callback' not in kwargs:
             return call_ex(self.object, self.real, *args)
         call(self.object, self.real, *args, **kwargs)
+
 
 def diceCall(func = None, name=None, block=False):
     if func:
@@ -215,6 +220,7 @@ def diceCall(func = None, name=None, block=False):
         def f(func, name = name, block=block):
             return diceCall(func, name, block)
     return f
+
 
 class diceSync:
 
@@ -242,6 +248,7 @@ class diceSync:
             elif self.fset(obj, path, value[0]):
                 return None
         return (self.fget(obj, path),)
+
 
 class DICEObjectMeta(ABCMeta):
 
@@ -275,6 +282,7 @@ class DICEObjectMeta(ABCMeta):
         if socks:
             obj.connect()
         return obj
+
 
 class DICEObject(object, metaclass = DICEObjectMeta):
 
@@ -325,6 +333,7 @@ class DICEObject(object, metaclass = DICEObjectMeta):
     def delete(self):
         delete(self)
 
+
 def diceTask(name=None, prev=None, enabled=None):
     def wrap(f):
         f.__dicetask__ = dict(
@@ -335,6 +344,7 @@ def diceTask(name=None, prev=None, enabled=None):
         f.after = partial(diceTask, prev=f)
         return f
     return wrap
+
 
 class ApplicationMeta(DICEObjectMeta):
 
@@ -359,6 +369,7 @@ class ApplicationMeta(DICEObjectMeta):
         cls.__dice_tasks__ = tasks
         return cls
 
+
 class Application(DICEObject, metaclass=ApplicationMeta):
     ''' This is basic class for application. Every DICE application
     class should inherit this class.
@@ -373,7 +384,6 @@ class Application(DICEObject, metaclass=ApplicationMeta):
             (i.e. temporary)
     ''' 
 
-
     def __init__(self, instance_id, workflow_dir, progress, **kwargs):
         self.__instance_id = instance_id
         self.__progress = progress
@@ -382,7 +392,6 @@ class Application(DICEObject, metaclass=ApplicationMeta):
         self.__stopped = False
         self.__console_locals = dict(app=self)
         super().__init__(base_type = 'BasicApp', **kwargs)
-
 
     def connected(self):
         super().connected()
@@ -486,7 +495,6 @@ class Application(DICEObject, metaclass=ApplicationMeta):
 
     def internal_output_types_changed(self, output_types):
         pass
-
 
     @diceCall
     def alert(self):

@@ -41,17 +41,20 @@ log_name = ''
 settings = {}
 master_sock = None
 
+
 def dump_hook(obj):
     object_id = id(obj)
     if object_id in objects:
         return {'__object__': object_id}
     return obj
 
+
 def load_hook(data):
     obj = data.get('__object__')
     if obj != None:
         return objects[obj][0]
     return data
+
 
 def handle_result(call_id, value = None):
     count, callback = callbacks[call_id]
@@ -61,6 +64,7 @@ def handle_result(call_id, value = None):
         callbacks[call_id] = (count - 1, callback)
     callback(value)
 
+
 def handle_error(call_id, value = None):
     count, callback = callbacks[call_id]
     if count == 1:
@@ -69,9 +73,11 @@ def handle_error(call_id, value = None):
         callbacks[call_id] = (count - 1, callback)
     callback(Exception('DICE call error'))
 
+
 def handle_settigs(value):
     global settings
     settings = value
+
 
 def call(obj, name, *args, **kwargs):
     callback = kwargs.get('callback')
@@ -89,19 +95,23 @@ def call(obj, name, *args, **kwargs):
     message = msgpack.packb(data, default = dump_hook, use_bin_type=True)
     send(message, kwargs.get('mode', 0))
 
+
 def call_ex(obj, name, *args):
     result = None
     finished = False
+
     def callback(x):
         nonlocal finished
         nonlocal result
         finished = True
         result = x
+
     call(obj, name, *args, callback=callback, mode=3)
     wait(lambda: finished)
     if isinstance(result, Exception):
         raise result
     return result
+
 
 def instantiate(obj, type_name):
     object_id = id(obj)
@@ -109,6 +119,7 @@ def instantiate(obj, type_name):
     if socks:
         register_type(obj)
         create_object(obj, type_name)
+
 
 def register_type(obj):
     cls = type(obj)
@@ -119,11 +130,13 @@ def register_type(obj):
                 cls.__dice_signals__, cls.__dice_properties__)
             types[s].add(cls)
 
+
 def create_object(obj, type_name, mode=0):
     object_id = id(obj)
     cls = type(obj)
     type_id = id(cls)
     call(None, 'new', object_id, type_id, type_name, mode=mode)
+
 
 def delete(obj):
     object_id = id(obj)
@@ -136,6 +149,7 @@ stderr_write_old = sys.stderr.write
 stdout_data = ''
 stderr_data = ''
 
+
 def w_stdout_write(data):
     global stdout_data
     if data:
@@ -147,6 +161,7 @@ def w_stdout_write(data):
         else:
             stdout_data += data[0]
 
+
 def w_stderr_write(data):
     global stderr_data
     if data:
@@ -157,6 +172,7 @@ def w_stderr_write(data):
             stderr_data = data[1]
         else:
             stderr_data += data[0]
+
 
 def send(message, mode=0):
 
@@ -174,8 +190,10 @@ def send(message, mode=0):
             if ss[s] == len(message):
                 del ss[s]
 
+
 wizard.subscribe(w_stdout_write)
 wizard.subscribe(w_stderr_write)
+
 
 def stdout_write(data):
     stdout_write_old(data)
@@ -184,6 +202,7 @@ def stdout_write(data):
     else:
         w_stdout_write(data=data)
 
+
 def stderr_write(data):
     stderr_write_old(data)
     if wizard.thread_ident != _thread.get_ident():
@@ -191,8 +210,10 @@ def stderr_write(data):
     else:
         w_stderr_write(data=data)
 
+
 def app_settings():
     return call_ex(None, 'app_settings')
+
 
 @contextmanager
 def app_log(name):
@@ -206,8 +227,10 @@ def app_log(name):
         log_name = old_app_log
         call(None, 'app_log', old_app_log)
 
+
 def browse_rdl(templates, entities):
     return call_ex(None, 'browse_rdl', templates, entities)
+
 
 def notify(message=None, type="INFO", ttl=2.5, notify_id=None):
     params = dict(
@@ -218,8 +241,10 @@ def notify(message=None, type="INFO", ttl=2.5, notify_id=None):
         )
     return call(None, 'notify', params)
 
+
 def signal(path, target=None):
     return call(None, 'signal', path, target)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dice-addr', required = True, type=str)
@@ -227,6 +252,7 @@ parser.add_argument('--dice-port', required = True, type=int)
 parser.add_argument('--dice-progress', required = True, type=int)
 parser.add_argument('--dice-instance-id', required = True, type=str)
 parser.add_argument('--dice-workflow-dir', required = True, type=str)
+
 
 def connect(addr, port):
     global master_sock
@@ -253,14 +279,17 @@ def connect(addr, port):
             obj.connect()
         call(None, 'ready', app, mode=1)
 
+
 def disconnect(s):
     socks.remove(s)
     del packs[s]
     del types[s]
 
+
 def wait(stop):
     while not stop():
         process_messages(None)
+
 
 @contextmanager
 def set_socket(sock):
@@ -352,10 +381,13 @@ def process_messages(timeout=0):
     if current and master_sock not in socks:
         raise ConnectionLost()
 
+
 class ConnectionLost(Exception):
     pass
 
+
 idle = 0
+
 
 def idle_func():
     global idle
@@ -364,6 +396,7 @@ def idle_func():
     elif idle == 2:
         idle = -1
         wizard.w_idle()
+
 
 def run():
     global app, reader
