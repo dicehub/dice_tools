@@ -10,10 +10,12 @@ import shlex
 import signal
 import locale
 import codecs
+import psutil
 
 # DICE modules
 # =======================
 from dice_tools import process_messages
+
 
 def run_process(*args, command=None, stop=None, stdout=None,
         stderr=None, cwd=None, format_kwargs=None,
@@ -46,6 +48,12 @@ def run_process(*args, command=None, stop=None, stdout=None,
     def wait():
         proc.wait()
         q.put(lambda: None)
+
+    def kill(proc_pid):
+        process = psutil.Process(proc_pid)
+        for proc in process.children(recursive=True):
+            proc.kill()
+        process.kill()
 
     def read(stream, out):
         if isinstance(stream, io.TextIOWrapper):
@@ -111,11 +119,13 @@ def run_process(*args, command=None, stop=None, stdout=None,
                 if yield_func is not None:
                     yield_func()
                 if running and stop is not None and stop():
-                    print('process terminated!')
                     try:
-                        os.kill(proc.pid, signal.SIGTERM)
+                        print('Killing process ...')
+                        print('PID:', proc.pid)
+                        kill(proc.pid)
                     except:
                         pass
+                    print('process terminated!')
                     running = False
                 alive = any((v.is_alive() for v in threads))
                 try:
