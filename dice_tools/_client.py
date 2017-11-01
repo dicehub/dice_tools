@@ -402,15 +402,7 @@ def run():
     global app, reader
     global current_socket
 
-    from ._types import Application
 
-    args, _ = parser.parse_known_args()
-
-    app = Application.__subclasses__()[0](
-        instance_id=args.dice_instance_id,
-        workflow_dir=args.dice_workflow_dir,
-        progress=args.dice_progress
-    )
 
     reader, writer = socket.socketpair()
     reader.setblocking(0)
@@ -420,6 +412,16 @@ def run():
         writer.send(b'\x00')
 
     wizard.setup(wake)
+
+    from ._types import Application
+
+    args, _ = parser.parse_known_args()
+
+    app = Application.__subclasses__()[0](
+        instance_id=args.dice_instance_id,
+        workflow_dir=args.dice_workflow_dir,
+        progress=args.dice_progress
+    )
 
     connect(args.dice_addr, args.dice_port)
 
