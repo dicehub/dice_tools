@@ -247,6 +247,8 @@ class _Wizard:
                     subs.discard(subscriber)
 
     def __getattr__(self, method):
+        
+        assert self.thread_ident is not None
 
         if self.thread_ident != _thread.get_ident():
             def f(*args, **kwargs):
