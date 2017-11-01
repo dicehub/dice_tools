@@ -56,7 +56,11 @@ def run_process(*args, command=None, stop=None, stdout=None,
         process.kill()
 
     def read(stream, out):
+        """
+        Function for stoud/stderr
+        """
         if isinstance(stream, io.TextIOWrapper):
+            # for unicode
             if callable(out):
                 result = ''
                 for char in iter(lambda: stream.read(1), ''):
@@ -73,8 +77,9 @@ def run_process(*args, command=None, stop=None, stdout=None,
                     out.write(data)
             elif isinstance(out, io.BytesIO):
                 for data in iter(stream.read, b''):
-                    out.write(data.encode('utf8'))     
+                    out.write(data.encode('utf8'))
         else:
+            # For binary  data
             if callable(out):
                 encoding = locale.getpreferredencoding(False)
                 result = ''
@@ -138,7 +143,7 @@ def run_process(*args, command=None, stop=None, stdout=None,
             if running:
                 print('process interrupted!')
                 try:
-                    os.kill(proc.pid, signal.SIGINT)
+                    kill(proc.pid)
                 except:
                     pass
                 running = False

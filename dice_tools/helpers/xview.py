@@ -29,8 +29,6 @@ class View(DICEObject):
         if self.__send_counter < frame_index:
             self.__send_counter = frame_index
             self._update(sx, sy, data, flip, 'lz4')
-        else:
-            print('frame skipped')
 
     @diceCall
     def _update(self, sx, sy, flip, data):
