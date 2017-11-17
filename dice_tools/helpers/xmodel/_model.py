@@ -232,7 +232,7 @@ class Model(DICEObject):
 
                 # query model data for child items
                 if self.__data.elements(child) != None:
-                    params['has_children'] = True
+                    params['can_have_children'] = True
 
                 # is item in selection
                 if child in self.__selection:

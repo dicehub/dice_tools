@@ -1,3 +1,4 @@
+- Added canHaveChildren property to model items.
 - Better kill command for the running process.
 - Fixes for process runner.
 
