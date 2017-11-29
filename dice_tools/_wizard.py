@@ -97,7 +97,8 @@ class _Wizard:
         try:
             while True:
                 method, args, kwargs = self.callbacks.get(False)
-                def f():
+
+                def f(method=method, args=args, kwargs=kwargs):
                     self.__getattr__(method)(*args, **kwargs)
                 result.append(f)
         except Empty:

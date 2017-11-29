@@ -16,7 +16,7 @@ class Model(DICEObject):
     Implementation notes:
         * Every item identified by python's object identity function id.
         * Items can be repeated in model, but selection and current_item
-        will work with some issues: selection will select all found duplicates
+        will work with some issues: selection will sedTlect all found duplicates
         and current item moves to first found item in model.
         * Items move has some limitations now, see method comment.
         * Every action is sent to dice in asynchronous mode.

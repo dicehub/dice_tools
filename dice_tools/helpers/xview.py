@@ -9,13 +9,16 @@ import io
 import threading
 from queue import Queue
 
+
 def worker(view, sx, sy, flip, data, index):
     data = lz4framed.compress(data, level=0)
     wizard.w_send_frame(view, sx, sy, flip, [data], index)
 
+
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
 __ALL__ = ['View']
+
 
 class View(DICEObject):
 
