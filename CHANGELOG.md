@@ -1,3 +1,4 @@
+- Smaller timeout period for run_process (from 0.1 to 0.001).
 - Critical fix for wizard.
 - Added canHaveChildren property to model items.
 - Better kill command for the running process.

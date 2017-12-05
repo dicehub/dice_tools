@@ -134,7 +134,7 @@ def run_process(*args, command=None, stop=None, stdout=None,
                     running = False
                 alive = any((v.is_alive() for v in threads))
                 try:
-                    q.get(alive, timeout=0.1)()
+                    q.get(alive, timeout=0.001)()
                 except Empty:
                     if not alive:
                         break
