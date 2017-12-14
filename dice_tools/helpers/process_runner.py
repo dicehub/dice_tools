@@ -10,10 +10,12 @@ import shlex
 import signal
 import locale
 import codecs
+import psutil
 
 # DICE modules
 # =======================
 from dice_tools import process_messages
+
 
 def run_process(*args, command=None, stop=None, stdout=None,
         stderr=None, cwd=None, format_kwargs=None,
@@ -47,8 +49,18 @@ def run_process(*args, command=None, stop=None, stdout=None,
         proc.wait()
         q.put(lambda: None)
 
+    def kill(proc_pid):
+        process = psutil.Process(proc_pid)
+        for proc in process.children(recursive=True):
+            proc.kill()
+        process.kill()
+
     def read(stream, out):
+        """
+        Function for stoud/stderr
+        """
         if isinstance(stream, io.TextIOWrapper):
+            # for unicode
             if callable(out):
                 result = ''
                 for char in iter(lambda: stream.read(1), ''):
@@ -65,8 +77,9 @@ def run_process(*args, command=None, stop=None, stdout=None,
                     out.write(data)
             elif isinstance(out, io.BytesIO):
                 for data in iter(stream.read, b''):
-                    out.write(data.encode('utf8'))     
+                    out.write(data.encode('utf8'))
         else:
+            # For binary  data
             if callable(out):
                 encoding = locale.getpreferredencoding(False)
                 result = ''
@@ -111,15 +124,17 @@ def run_process(*args, command=None, stop=None, stdout=None,
                 if yield_func is not None:
                     yield_func()
                 if running and stop is not None and stop():
-                    print('process terminated!')
                     try:
-                        os.kill(proc.pid, signal.SIGTERM)
+                        print('Killing process ...')
+                        print('PID:', proc.pid)
+                        kill(proc.pid)
                     except:
                         pass
+                    print('process terminated!')
                     running = False
                 alive = any((v.is_alive() for v in threads))
                 try:
-                    q.get(alive, timeout=0.1)()
+                    q.get(alive, timeout=0.001)()
                 except Empty:
                     if not alive:
                         break
@@ -128,7 +143,7 @@ def run_process(*args, command=None, stop=None, stdout=None,
             if running:
                 print('process interrupted!')
                 try:
-                    os.kill(proc.pid, signal.SIGINT)
+                    kill(proc.pid)
                 except:
                     pass
                 running = False

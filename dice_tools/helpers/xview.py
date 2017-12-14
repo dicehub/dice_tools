@@ -9,13 +9,16 @@ import io
 import threading
 from queue import Queue
 
+
 def worker(view, sx, sy, flip, data, index):
     data = lz4framed.compress(data, level=0)
     wizard.w_send_frame(view, sx, sy, flip, [data], index)
 
+
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
 __ALL__ = ['View']
+
 
 class View(DICEObject):
 
@@ -29,8 +32,6 @@ class View(DICEObject):
         if self.__send_counter < frame_index:
             self.__send_counter = frame_index
             self._update(sx, sy, data, flip, 'lz4')
-        else:
-            print('frame skipped')
 
     @diceCall
     def _update(self, sx, sy, flip, data):

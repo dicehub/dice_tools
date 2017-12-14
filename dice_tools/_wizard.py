@@ -1,3 +1,5 @@
+import _thread
+
 from types import MethodType, FunctionType
 from inspect import signature
 from weakref import ref, WeakKeyDictionary, WeakSet, WeakMethod
@@ -5,9 +7,10 @@ from heapq import heappush, heappop
 from time import time
 from collections import Counter
 from queue import Queue, Empty
-import _thread
+
 
 __all__ = ['wizard']
+
 
 class _Wizard:
     
@@ -94,7 +97,8 @@ class _Wizard:
         try:
             while True:
                 method, args, kwargs = self.callbacks.get(False)
-                def f():
+
+                def f(method=method, args=args, kwargs=kwargs):
                     self.__getattr__(method)(*args, **kwargs)
                 result.append(f)
         except Empty:
@@ -244,6 +248,8 @@ class _Wizard:
                     subs.discard(subscriber)
 
     def __getattr__(self, method):
+        
+        assert self.thread_ident is not None
 
         if self.thread_ident != _thread.get_ident():
             def f(*args, **kwargs):
@@ -301,5 +307,6 @@ class _Wizard:
             for s in subs:
                 info.setdefault(s, set()).add(v)
         return {k: list(v) for k, v in info.items()}
+
 
 wizard = _Wizard()

@@ -13,7 +13,7 @@ import pprint
 
 # DICE modules
 # ============
-from ._client import call, call_ex, instantiate, delete, app_log
+from ._client import call, call_ex, instantiate, delete, app_log, socks
 from ._wizard import wizard
 
 __all__ = [
@@ -28,6 +28,7 @@ __all__ = [
     'diceSync',
     'diceCall'
 ]
+
 
 class diceSlot:
 
@@ -62,6 +63,7 @@ class diceSlot:
                 'method_name': attr_name
                 })
         return result
+
 
 class diceSignal:
     """
@@ -104,6 +106,7 @@ class diceSignal:
             'name': self.__name,
             'arguments': self.__arguments
         }
+
 
 class diceProperty(property):
     """
@@ -188,6 +191,7 @@ class diceProperty(property):
             'notify': self.__notify and self.__notify.name
         }
 
+
 class CallProxy:
 
     __slots__ = 'object', 'real'
@@ -200,6 +204,7 @@ class CallProxy:
         if 'callback' not in kwargs:
             return call_ex(self.object, self.real, *args)
         call(self.object, self.real, *args, **kwargs)
+
 
 def diceCall(func = None, name=None, block=False):
     if func:
@@ -215,6 +220,7 @@ def diceCall(func = None, name=None, block=False):
         def f(func, name = name, block=block):
             return diceCall(func, name, block)
     return f
+
 
 class diceSync:
 
@@ -243,6 +249,7 @@ class diceSync:
                 return None
         return (self.fget(obj, path),)
 
+
 class DICEObjectMeta(ABCMeta):
 
     def __new__(mcls, name, bases, namespace):
@@ -270,6 +277,13 @@ class DICEObjectMeta(ABCMeta):
         cls.__dice_synchronizers__ = sorted(synchronizers, key=lambda x: len(x[0]))
         return cls
 
+    def __call__(self, *args, **kwargs):
+        obj = super().__call__(*args, **kwargs)
+        if socks:
+            obj.connect()
+        return obj
+
+
 class DICEObject(object, metaclass = DICEObjectMeta):
 
     __dice_initialized__ = False
@@ -285,7 +299,6 @@ class DICEObject(object, metaclass = DICEObjectMeta):
     def connected(self):
         for info in self.__dice_properties__:
             getattr(self.__class__, info['attr_name'])._send(self)
-        print('props send')
 
     def __dice_sync_props__(self, props):
         result = {}
@@ -320,6 +333,7 @@ class DICEObject(object, metaclass = DICEObjectMeta):
     def delete(self):
         delete(self)
 
+
 def diceTask(name=None, prev=None, enabled=None):
     def wrap(f):
         f.__dicetask__ = dict(
@@ -330,6 +344,7 @@ def diceTask(name=None, prev=None, enabled=None):
         f.after = partial(diceTask, prev=f)
         return f
     return wrap
+
 
 class ApplicationMeta(DICEObjectMeta):
 
@@ -354,6 +369,7 @@ class ApplicationMeta(DICEObjectMeta):
         cls.__dice_tasks__ = tasks
         return cls
 
+
 class Application(DICEObject, metaclass=ApplicationMeta):
     ''' This is basic class for application. Every DICE application
     class should inherit this class.
@@ -368,16 +384,14 @@ class Application(DICEObject, metaclass=ApplicationMeta):
             (i.e. temporary)
     ''' 
 
-
     def __init__(self, instance_id, workflow_dir, progress, **kwargs):
         self.__instance_id = instance_id
         self.__progress = progress
         self.__workflow_dir = workflow_dir
         self.__running = False
         self.__stopped = False
-        self.__console_locals = {}
+        self.__console_locals = dict(app=self)
         super().__init__(base_type = 'BasicApp', **kwargs)
-
 
     def connected(self):
         super().connected()
@@ -481,7 +495,6 @@ class Application(DICEObject, metaclass=ApplicationMeta):
 
     def internal_output_types_changed(self, output_types):
         pass
-
 
     @diceCall
     def alert(self):
