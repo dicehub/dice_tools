@@ -1,3 +1,5 @@
+## 17.12.0 (2017-12-14) 
+
 - Smaller timeout period for run_process (from 0.1 to 0.001).
 - Critical fix for wizard.
 - Added canHaveChildren property to model items.
