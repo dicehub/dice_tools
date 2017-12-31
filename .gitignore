@@ -2,3 +2,4 @@ __pycache__
 build
 dist
 dice_tools.egg-info
+.directory
