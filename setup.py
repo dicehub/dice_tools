@@ -1,6 +1,7 @@
-from setuptools import setup, find_packages
-from dice_tools import __VERSION__
 import os
+from setuptools import setup, find_packages
+
+__VERSION__ = "18.01.0"
 
 with open('README.md') as f:
     long_description = f.read()
